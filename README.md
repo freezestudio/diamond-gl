@@ -14,15 +14,8 @@ All features are WIP.
 - Full support of Direct State Access
 - (Not yet done) Support of most OpenGL loaders
 
-### Update at 30.08.2017
+## In development from 9/11/2017
 
 - Rewrite semantics
-- Removed weird tuple semantics
-- Buffers always untyped (unitype) by default
-- Mostly, actions moved to runtine
-- VBO binding now can have type
-- Replaced pointers to inline variable
-
-## Nearly planned
-
-- Buffer typed proxy
+- Active using map
+- Smart OpenGL memory managment (with notifications of command classes)
