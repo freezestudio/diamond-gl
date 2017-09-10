@@ -1,90 +1,70 @@
-#pragma once
-
 #include "opengl.hpp"
+#include <map>
 #include "buffer.hpp"
-#include "enums.hpp"
-#include <memory>
 
-namespace NS_NAME {
-
-    class _texture_context;
-
-
+namespace NSM {
 
     class texture;
 
-    class texture_level {
-        friend texture;
-        GLuint level = 0;
-        texture * gltex;
-
-    public:
-        ~texture_level() {};
-        texture_level(texture& tex, GLint level = 0);
-
-        void subimage(GLint offset, GLuint size, GLenum format, GLenum type, const GLvoid * pixels);
-        void subimage(glm::ivec2 offset, glm::uvec2 size, GLenum format, GLenum type, const GLvoid * pixels);
-        void subimage(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, const GLvoid * pixels);
-
-        void get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, GLenum buffersize, void *pixels) const;
-
-        template<class T>
-        std::vector<T>& get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, std::vector<T>& buffer) const;
-
-        template<class T>
-        std::vector<T> get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, GLenum buffersize) const;
-
-        template<class T>
-        T * get_parameter(GLenum pname, T * params = nullptr) const;
-
-        template<class T>
-        T get_parameter_val(GLenum pname, T * params = nullptr) const {
-            return *(this->get_parameter(pname, params));
-        }
-
-        operator GLuint() const {
-            return level;
-        }
-    };
-
-
-
-
-
     class texture_builder {
     public:
-        static void create(GLuint * heap, _texture_context& target);
-        static void release(GLuint * heap){
-            glDeleteTextures(1, heap);
+        static std::map<GLuint, size_t> counters;
+        static std::map<GLuint, GLuint> dictionary; // optional dictionary
+
+        static void account(texture& key){
+            if (!counters[key]) counters[key] = 1;
+            counters[key]++;
+        }
+
+        static void discount(texture& key){
+            if (counters[key]) counters[key]--;
+        }
+
+        static void create(GLuint &obj, texture& tex, GLuint& target){
+            glCreateTextures(target, 1, &obj);
+            dictionary[tex] = target; // link
+        }
+
+        static void release(GLuint &obj, texture& tex){
+            glDeleteTextures(1, &obj);
+            dictionary.erase(tex);
+            vpair key = {dictionary[tex], tex};
+            if (counters[key]) counters.erase(key);
+        }
+
+        static bool single_of(texture& tex){
+            vpair key = {dictionary[tex], tex};
+            return !counters[key] || counters[key] <= 1;
         }
     };
 
-
-    // universal texture object
     class texture: public gl_object<texture_builder> {
-
     protected:
-        friend _texture_context;
         using base = gl_object<texture_builder>;
-        _texture_context * gltarget;
 
     public:
-
-        // constructor (variadic)
-        texture(_texture_context& target) { base::create_alloc(target); gltarget = &target; } // variadic unsupported
-        texture(texture& another) { base::move(another); gltarget = &another.target(); } // copy (it refs)
-        texture(texture&& another) { base::move(std::forward<texture>(another)); gltarget = &another.target(); } // move
-        texture(_texture_context& target, GLuint * another) { base::move(another); gltarget = &target; } // heap by ptr
-
-        static std::vector<texture> create(_texture_context &gltarget, size_t n = 1);
-
-        texture_level level(GLint level = 0) {
-            return texture_level(thisref, level);
+        texture(){}
+        texture(GLuint target){
+            create_alloc(thisref, target);
         }
 
-        _texture_context& target() const {
-            return *gltarget;
+        texture(texture& another) { base::move(another); } // copy (it refs)
+        texture(texture&& another) { base::move(std::forward<texture>(another)); } // move
+
+        ~texture(){
+            if (texture_builder::single_of(thisref)) this->release(thisref);
+            texture_builder::discount(thisref);
         }
+
+        GLuint target(){
+            return texture_builder::dictionary[thisref];
+        }
+
+        static std::vector<texture> create(GLuint gltarget, size_t n = 1){
+            std::vector<texture> textures(n);
+            glCreateTextures(gltarget, n, (GLuint *)textures.data());
+            return textures;
+        };
 
 
         template<class T>
@@ -140,16 +120,16 @@ namespace NS_NAME {
 
 
         // texture storage (accept GLM vector)
-        void storage(GLsizei levels, const _internal_format& internalformat, GLsizei size) {
-            glTextureStorage1D(thisref, levels, internalformat.internal(), size);
+        void storage(GLsizei levels, const GLenum& internalformat, GLsizei size) {
+            glTextureStorage1D(thisref, levels, internalformat, size);
         }
 
-        void storage(GLsizei levels, const _internal_format& internalformat, glm::uvec2 size) {
-            glTextureStorage2D(thisref, levels, internalformat.internal(), size.x, size.y);
+        void storage(GLsizei levels, const GLenum& internalformat, glm::uvec2 size) {
+            glTextureStorage2D(thisref, levels, internalformat, size.x, size.y);
         }
 
-        void storage(GLsizei levels, const _internal_format& internalformat, glm::uvec3 size) {
-            glTextureStorage3D(thisref, levels, internalformat.internal(), size.x, size.y, size.z);
+        void storage(GLsizei levels, const GLenum& internalformat, glm::uvec3 size) {
+            glTextureStorage3D(thisref, levels, internalformat, size.x, size.y, size.z);
         }
 
 
@@ -171,8 +151,8 @@ namespace NS_NAME {
         void copy_image_subdata(GLint srcLevel, glm::ivec3 srcOffset, texture& destination, GLint dstLevel, glm::ivec3 dstOffset, glm::uvec3 size) const;
 
         // texture of buffer 
-        void buffer(const _internal_format& internalformat, buffer& buf){
-            glTextureBuffer(thisref, internalformat.internal(), buf);
+        void buffer(const GLenum& internalformat, buffer& buf){
+            glTextureBuffer(thisref, internalformat, buf);
         }
 
 
@@ -201,233 +181,6 @@ namespace NS_NAME {
             this->get_image_subdata(level, offset, size, format, type, buffer.size() * sizeof(T), buffer.data());
             return buffer;
         }
-    };
-
-
-    texture_level::texture_level(texture& tex, GLint level) {
-        this->gltex = &tex;
-        this->level = level;
-    }
-
-    void texture_level::subimage(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, const GLvoid * pixels) {
-        gltex->subimage(thisref, offset, size, format, type, pixels);
-    };
-
-    void texture_level::subimage(glm::ivec2 offset, glm::uvec2 size, GLenum format, GLenum type, const GLvoid * pixels) {
-        gltex->subimage(thisref, offset, size, format, type, pixels);
-    };
-
-    void texture_level::subimage(GLint offset, GLuint size, GLenum format, GLenum type, const GLvoid * pixels) {
-        gltex->subimage(thisref, offset, size, format, type, pixels);
-    };
-
-    void texture_level::get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, GLenum buffersize, void *pixels) const {
-        gltex->get_image_subdata((GLuint)thisref, offset, size, format, type, buffersize, pixels);
-    }
-
-    // get subimage to vector
-    template<class T>
-    std::vector<T>& texture_level::get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, std::vector<T>& buffer) const {
-        return gltex->get_image_subdata<T>(thisref, offset, size, format, type, buffer);
-    }
-
-    // get subimage as vector
-    template<class T>
-    std::vector<T> texture_level::get_image_subdata(glm::ivec3 offset, glm::uvec3 size, GLenum format, GLenum type, GLenum buffersize) const {
-        return gltex->get_image_subdata<T>(thisref, offset, size, format, type, buffersize);
-    }
-
-    template<class T>
-    T * texture_level::get_parameter(GLenum pname, T * params) const {
-        if (!params) params = { 0 };
-        if constexpr (std::is_same<T, int>::value) glGetTextureLevelParameteriv(*gltex, thisref, pname, (int*)params);
-        if constexpr (std::is_same<T, float>::value) glGetTextureLevelParameterfv(*gltex, thisref, pname, (float*)params);
-        return params;
-    }
-
-
-
-
-    class sampler_builder {
-    public:
-        static void create(GLuint * heap){
-            glCreateSamplers(1, heap);
-        }
-        static void release(GLuint * heap){
-            glDeleteSamplers(1, heap);
-        }
-    };
-
-
-    // universal texture object
-    class sampler: public gl_object<sampler_builder> {
-
-    protected:
-        using base = gl_object<sampler_builder>;
-
-    public:
-
-        // constructor (variadic)
-        sampler() { base::create_alloc(); }
-        sampler(sampler& another) { base::move(another); } // copy (it refs)
-        sampler(sampler&& another) { base::move(std::forward<sampler>(another)); } // move
-        sampler(GLuint * another) { base::move(another); } // heap by ptr
-
-        template<class T>
-        void parameter_val(GLenum pname, T param) {
-            this->parameter<T>(pname, &param);
-        }
-
-        template<class T>
-        void parameter_int_val(GLenum pname, T param) {
-            this->parameter_int<T>(pname, &param);
-        }
-
-        template<class T>
-        T get_parameter_val(GLenum pname, T * params = nullptr) const {
-            return *(this->get_parameter(pname, params));
-        }
-
-        template<class T>
-        T get_parameter_int_val(GLenum pname, T * params = nullptr) const {
-            return *(this->get_parameter_int(pname, params));
-        }
-
-
-
-        template<class T>
-        void parameter(GLenum pname, T * params) {
-            if constexpr (std::is_same<T, int>::value) glSamplerParameteriv(thisref, pname, params);
-            if constexpr (std::is_same<T, float>::value) glSamplerParameterfv(thisref, pname, params);
-        }
-
-        template<class T>
-        void parameter_int(GLenum pname, T * params) {
-            if constexpr (std::is_same<T, int>::value) glSamplerParameterIiv(thisref, pname, params);
-            if constexpr (std::is_same<T, GLuint>::value) glSamplerParameterIuiv(thisref, pname, params);
-        }
-
-        template<class T>
-        T * get_parameter(GLenum pname, T * params = nullptr) const {
-            if (!params) params = { 0 };
-            if constexpr (std::is_same<T, int>::value) glGetSamplerParameteriv(thisref, pname, params);
-            if constexpr (std::is_same<T, float>::value) glGetSamplerParameterfv(thisref, pname, params);
-            return params;
-        }
-
-        template<class T>
-        T * get_parameter_int(GLenum pname, T * params = nullptr) const {
-            if (!params) params = { 0 };
-            if constexpr (std::is_same<T, int>::value) glGetSamplerParameterIiv(thisref, pname, params);
-            if constexpr (std::is_same<T, GLuint>::value) glGetSamplerParameterIuiv(thisref, pname, params);
-            return params;
-        }
-
-    };
-
-
-    // texture binding
-    class texture_binding {
-    protected:
-        GLuint binding = 0;
-
-    public:
-        texture_binding(GLuint binding = 0) : binding(binding) {}
-        ~texture_binding(){}
-
-        void bind_sampler(sampler& sam) {
-            glBindSampler(thisref, sam);
-        }
-
-        void bind_texture(texture& tex) {
-            glBindTextureUnit(thisref, tex);
-        }
-
-        operator GLuint(){
-            return binding;
-        }
-
-    };
-
-
-    // image binding
-    class image {
-    protected:
-        GLuint binding = 0;
-
-    public:
-        image(GLuint binding = 0): binding(binding) { }
-
-        // bind image texture
-        void bind_texture(texture& texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format) {
-            glBindImageTexture(thisref, texture, level, layered, layer, access, format);
-        }
-
-        operator GLuint() const {
-            return binding;
-        }
-    };
-
-
-    // contexted texture binding
-    class _texture_context {
-    protected:
-        GLenum target;
-    public:
-        _texture_context(GLenum target) : target(target) {}
-
-        // create single texture
-        texture create() {
-            return texture(thisref);
-        }
-
-        // context named binding
-        void bind(texture& tex){
-            glBindTexture(thisref, tex);
-        }
-
-        operator GLenum(){
-            return target;
-        }
-    };
-    
-    
-    void texture_builder::create(GLuint * heap, _texture_context& target){
-        glCreateTextures(target, 1, heap);
-    }
-
-    void texture::copy_image_subdata(GLint srcLevel, glm::ivec3 srcOffset, texture& destination, GLint dstLevel, glm::ivec3 dstOffset, glm::uvec3 size) const {
-        glCopyImageSubData(thisref, (GLenum)thisref.target(), srcLevel, srcOffset.x, srcOffset.y, srcOffset.z, destination, (GLenum)destination.target(), dstLevel, dstOffset.x, dstOffset.y, dstOffset.z, size.x, size.y, size.z);
-    }
-
-    std::vector<texture> texture::create(_texture_context &gltarget, size_t n) {
-        GLuint * objects = new GLuint[n];
-        glCreateTextures(gltarget, n, objects);
-        std::vector<texture> textures;
-        for (intptr_t pt = 0; pt < n; pt++) {
-            textures.push_back(texture(gltarget, objects + pt));
-        }
-        return std::move(textures);
-    }
-
-
-
-    // texture targets
-    namespace texture_target {
-        _texture_context texture_cube(GL_TEXTURE_CUBE_MAP);
-        _texture_context texture_buffer(GL_TEXTURE_BUFFER);
-        _texture_context texture1d(GL_TEXTURE_1D);
-        _texture_context texture2d(GL_TEXTURE_2D);
-        _texture_context texture3d(GL_TEXTURE_3D);
-        _texture_context texture2d_msaa(GL_TEXTURE_2D_MULTISAMPLE);
-        _texture_context texture1d_array(GL_TEXTURE_1D_ARRAY);
-        _texture_context texture2d_array(GL_TEXTURE_2D_ARRAY);
-    };
-
-
-
-    // bindless pointers manipulations
-    namespace bindless_texture { // TODO support
 
     };
 

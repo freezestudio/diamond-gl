@@ -41,13 +41,13 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:/Program Files (x86)/Microsoft Visual Studio Preview/Community/VC/Tools/MSVC/14.11.25503/include/*",
+                "C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/VC/Tools/MSVC/14.11.25503/include/*",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/um",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared",
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/winrt",
-                "C:/Users/capitalknew/Documents/GitHub/diamond-gl/include/",
-                "C:/Users/capitalknew/Documents/GitHub/diamond-gl/external/include"
+                "${workspaceRoot}",
+                "C:/Users/capit/Documents/GitHub/diamond-gl-model2/include/diamond/../../external/include/"
             ],
             "defines": [
                 "_DEBUG",
@@ -56,13 +56,13 @@
             "intelliSenseMode": "msvc-x64",
             "browse": {
                 "path": [
-                    "C:/Program Files (x86)/Microsoft Visual Studio Preview/Community/VC/Tools/MSVC/14.11.25503/include/*",
+                    "C:/Program Files (x86)/Microsoft Visual Studio/Preview/Community/VC/Tools/MSVC/14.11.25503/include/*",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/um",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/winrt",
-                    "C:/Users/capitalknew/Documents/GitHub/diamond-gl/include/",
-                    "C:/Users/capitalknew/Documents/GitHub/diamond-gl/external/include"
+                    "${workspaceRoot}",
+                    "C:/Users/capit/Documents/GitHub/diamond-gl-model2/include/diamond/../../external/include/"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
