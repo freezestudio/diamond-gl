@@ -252,7 +252,7 @@ namespace NS_NAME {
             glCreateProgramPipelines(1, heap);
         }
         static void release(GLuint * heap){
-            glCreateProgramPipelines(1, heap);
+            glDeleteProgramPipelines(1, heap);
         }
     };
 
