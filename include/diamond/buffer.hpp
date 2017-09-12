@@ -42,8 +42,8 @@ namespace NS_NAME {
             for (intptr_t pt = 0; pt < n; pt++) {
                 buffers.push_back(buffer(objects + pt));
             }
-            delete objects; // free, because pointer values was copied
-            return std::move(buffers);
+            delete[] objects; // free, because pointer values was copied
+            return buffers;
         }
 
         void get_subdata(GLintptr offset, GLsizei size, void *data) const {
