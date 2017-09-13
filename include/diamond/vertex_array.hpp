@@ -145,25 +145,25 @@ namespace NS_NAME {
     template<class... T>
     void vertex_array_binding<T...>::vertex_buffer(std::vector<buffer>& bufs, const GLintptr * offsets) {
         constexpr size_t N = sizeof...(T);
-        GLsizei * strides = get_stride_wrap<T...>();
+        GLsizei * strides = get_stride_wrap<T...>().data();
         bool hadOffsets = !!offsets;
         if (!hadOffsets) offsets = new GLintptr[N]{ 0 };
         GLuint * bufsp = new GLuint[N];
         const size_t Nv = std::min(N, bufs.size());
         for (int i = 0; i < Nv; i++) bufsp[i] = bufs[i];
         glVertexArrayVertexBuffers(*glvao, thisref, Nv, bufsp, offsets, strides);
-        if (!hadOffsets) delete offsets;
-        delete bufsp;
+        if (!hadOffsets) delete[] offsets;
+        delete[] bufsp;
     }
 
     template<class... T>
     void vertex_array_binding<T...>::vertex_buffer(buffer * bufs, const GLintptr * offsets) {
         constexpr size_t N = sizeof...(T);
-        GLsizei * strides = get_stride_wrap<T...>();
+        GLsizei * strides = get_stride_wrap<T...>().data();
         bool hadOffsets = !!offsets;
         if (!hadOffsets) offsets = new GLintptr[N]{ 0 };
         glVertexArrayVertexBuffers(*glvao, thisref, N, bufs, offsets, strides);
-        if (!hadOffsets) delete offsets;
+        if (!hadOffsets) delete[] offsets;
     }
 
     
