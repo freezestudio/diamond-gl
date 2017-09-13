@@ -100,31 +100,27 @@ namespace NS_NAME {
 */
 
     // some hack
-    template <class... T>
-    struct restor {};
+	template<class C, std::size_t N, class... Args>
+	struct restor;
 
-    // getting strides of buffer types
-    template <class Tm>
-    constexpr decltype(auto) get_stride_impl(GLsizei * ptr, restor<Tm>) {
-        *ptr = (GLsizei)sizeof(Tm);
-    }
+	// getting strides of buffer types
 
-    template <class Tm, class... T>
-    constexpr decltype(auto) get_stride_impl(GLsizei * ptr, restor<Tm, T...> rst) {
-        *ptr = (GLsizei)sizeof(Tm);
-        get_stride_impl<T...>(ptr + 1, restor<T...>{});
-    }
+	template<class C, std::size_t N, class T>
+	struct restor<C, N, T>	{
+		constexpr restor() { type_size_buffer[N - 1] = sizeof(T); }
+		C type_size_buffer[N];
+	};
 
-    template <class... T>
-    constexpr decltype(auto) get_stride(GLsizei * ptr) {
-        return get_stride_impl<T...>(ptr, restor<T...>{});
-    }
+	template<class C, std::size_t N, class T, class ... Args>
+	struct restor<C, N, T, Args...> : restor<C, N, Args...>	{
+		constexpr restor() { type_size_buffer[N - sizeof...(Args)-1] = sizeof(T); }
+	};
 
-    template <class... T>
-    constexpr GLsizei * get_stride_wrap() {
-        GLsizei * ptr = new GLsizei[sizeof...(T)];
-        get_stride<T...>(ptr);
-        return ptr;
-    }
+	template<class... Args>
+	constexpr auto get_stride_wrap(){
+		constexpr auto N = sizeof...(Args);
+		auto type_size_buffer = restor<GLsizei, N, Args...>{}.type_size_buffer;
+		return std::vector<GLsizei>{type_size_buffer, type_size_buffer + N};
+	}
 
 };
